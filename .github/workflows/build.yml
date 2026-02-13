@@ -20,13 +20,13 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore BLM-RotationSim.csproj
+        run: dotnet restore BLMRotationSim.csproj
 
       - name: Build EXE
-        run: dotnet publish BLM-RotationSim.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true
+        run: dotnet publish BLMRotationSim.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
-          name: BLM-RotationSim-EXE
-          path: BLM-RotationSim\bin\Release\net8.0-windows\win-x64\publish\*.exe
+          name: BLMRotationSim-EXE
+          path: BLMRotationSim\bin\Release\net8.0-windows\win-x64\publish\*.exe
