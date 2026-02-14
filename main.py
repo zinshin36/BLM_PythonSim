@@ -33,43 +33,48 @@ def calculate_dps(crit, dh, det, sps):
     return potency/60 * multiplier
 
 # Best-in-slot selection
-def best_in_slot(slot_name):
+def best_in_slot(slot_name, top_n=3):
     items = gear.get(slot_name, [])
     if not items:
-        return None
-    # Simple BIS: sum of all stats
-    return max(items, key=lambda g: g["Crit"] + g["DirectHit"] + g["Determination"] + g["SpellSpeed"])
+        return []
+    # Sum stats for sorting
+    sorted_items = sorted(items, key=lambda g: g["Crit"]+g["DirectHit"]+g["Determination"]+g["SpellSpeed"], reverse=True)
+    return sorted_items[:top_n]
 
 # GUI
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("BLM DPS Simulator (Full Slots)")
+        self.setWindowTitle("BLM DPS Simulator (Full Slots + Alternatives)")
 
         self.slots = ["Head", "Body", "Hands", "Legs", "Feet", "Accessories"]
         self.combos = {}
 
         layout = QVBoxLayout()
         for slot in self.slots:
-            label = QLabel(f"{slot} Gear")
+            label = QLabel(f"{slot} Gear (Top 3 options)")
             combo = QComboBox()
-            items = [g["Name"] for g in gear.get(slot, [])]
-            combo.addItems(items)
-            # Select best-in-slot automatically
-            bis = best_in_slot(slot)
-            if bis:
-                combo.setCurrentText(bis["Name"])
+
+            top_items = best_in_slot(slot)
+            if not top_items:
+                combo.addItem("No gear")
+            else:
+                for g in top_items:
+                    combo.addItem(g["Name"])
+                # Auto-select BIS
+                combo.setCurrentText(top_items[0]["Name"])
+
             layout.addWidget(label)
             layout.addWidget(combo)
             self.combos[slot] = combo
 
-        # Optional: show DPS configuration boxes
+        # Optional: Base stat config
         config_layout = QHBoxLayout()
         self.configs = {}
         for stat in ["Crit", "DirectHit", "Determination", "SpellSpeed"]:
             lbl = QLabel(stat)
             cb = QComboBox()
-            cb.addItems([str(i) for i in range(0, 501, 50)])  # allow user to adjust base stats
+            cb.addItems([str(i) for i in range(0, 501, 50)])
             cb.setCurrentText("0")
             config_layout.addWidget(lbl)
             config_layout.addWidget(cb)
@@ -97,10 +102,18 @@ class MainWindow(QMainWindow):
 
             # Add gear stats
             for slot, combo in self.combos.items():
-                selected = next((g for g in gear[slot] if g["Name"] == combo.currentText()), None)
+                selected_name = combo.currentText()
+                selected = next((g for g in gear.get(slot, []) if g["Name"] == selected_name), None)
                 if selected:
                     for stat in total_stats:
                         total_stats[stat] += selected[stat]
+                else:
+                    log(f"No gear selected for slot {slot}, using BIS if available.")
+                    bis_items = best_in_slot(slot)
+                    if bis_items:
+                        for stat in total_stats:
+                            total_stats[stat] += bis_items[0][stat]
+                        log(f"Auto-selected BIS for {slot}: {bis_items[0]['Name']}")
 
             dps = calculate_dps(total_stats["Crit"], total_stats["DirectHit"], total_stats["Determination"], total_stats["SpellSpeed"])
             self.result_label.setText(f"Estimated DPS: {dps:.2f}")
@@ -111,11 +124,9 @@ class MainWindow(QMainWindow):
             log(f"Simulation ERROR: {e}")
             QMessageBox.critical(self, "Error", f"Simulation failed:\n{e}")
 
-# Run application
+# Run app
 if __name__ == "__main__":
     import sys
-    from PySide6.QtWidgets import QApplication
-
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
