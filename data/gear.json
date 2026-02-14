@@ -6,5 +6,21 @@
   "Body": [
     {"Name":"Savage Body","Crit":220,"DirectHit":150,"Determination":0,"SpellSpeed":180},
     {"Name":"Tome Body","Crit":180,"DirectHit":200,"Determination":100,"SpellSpeed":0}
+  ],
+  "Hands": [
+    {"Name":"Savage Hands","Crit":160,"DirectHit":100,"Determination":0,"SpellSpeed":120},
+    {"Name":"Tome Hands","Crit":130,"DirectHit":140,"Determination":60,"SpellSpeed":0}
+  ],
+  "Legs": [
+    {"Name":"Savage Legs","Crit":200,"DirectHit":130,"Determination":0,"SpellSpeed":160},
+    {"Name":"Tome Legs","Crit":170,"DirectHit":170,"Determination":90,"SpellSpeed":0}
+  ],
+  "Feet": [
+    {"Name":"Savage Feet","Crit":150,"DirectHit":110,"Determination":0,"SpellSpeed":140},
+    {"Name":"Tome Feet","Crit":120,"DirectHit":150,"Determination":50,"SpellSpeed":0}
+  ],
+  "Accessories": [
+    {"Name":"Savage Ring","Crit":100,"DirectHit":80,"Determination":0,"SpellSpeed":90},
+    {"Name":"Tome Ring","Crit":90,"DirectHit":100,"Determination":40,"SpellSpeed":0}
   ]
 }
