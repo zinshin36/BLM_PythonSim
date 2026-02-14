@@ -24,10 +24,10 @@ jobs:
 
       - name: Build EXE
         run: |
-          pyinstaller --onefile --windowed main.py --add-data "data/current_tier.json;data"
+          pyinstaller --onefile --windowed main.py --add-data "data/gear_cache.json;data"
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
-          name: BLMRotationSim-Portable
+          name: BLM_Perfect_BiS
           path: dist/main.exe
