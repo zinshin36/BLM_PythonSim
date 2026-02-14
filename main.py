@@ -6,39 +6,45 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton, QSlider, QComboBox, QCheckBox, QProgressBar, QMessageBox
 )
 from PySide6.QtCore import Qt
-from config import ILVL_WINDOW_DEFAULT, PRIORITY_MODES
 from gear_cache import load_cache, refresh_gear_cache
 from tier_detector import detect_max_ilvl, filter_by_ilvl_window
 from brute_solver import solve_bis
 
+# Constants
 CACHE_PATH = Path("data/gear_cache.json")
+ILVL_WINDOW_DEFAULT = 30
+PRIORITY_MODES = ["Crit Focus", "DH Focus", "Spell Speed Focus", "Balanced"]
 
 # Ensure data folder exists
 CACHE_PATH.parent.mkdir(exist_ok=True)
 
-# If cache missing, create placeholder
+# Create placeholder cache if missing
 if not CACHE_PATH.exists():
     with open(CACHE_PATH, "w", encoding="utf-8") as f:
-        json.dump({"max_ilvl":0,"theme":"Dark","gear":[]}, f, indent=2)
+        json.dump({"max_ilvl": 0, "theme": "Dark", "gear": []}, f, indent=2)
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("BLM Perfect BiS Engine")
-        self.cache = load_cache() or {"gear": [], "max_ilvl":0, "theme":"Dark"}
-        self.max_ilvl = self.cache.get("max_ilvl",0)
-        self.theme = self.cache.get("theme","Dark")
+        try:
+            self.cache = load_cache() or {"gear": [], "max_ilvl": 0, "theme": "Dark"}
+        except Exception:
+            self.cache = {"gear": [], "max_ilvl": 0, "theme": "Dark"}
+
+        self.max_ilvl = self.cache.get("max_ilvl", 0)
+        self.theme = self.cache.get("theme", "Dark")
         self.init_ui()
         self.apply_theme()
 
     def init_ui(self):
         main = QVBoxLayout()
 
-        # Max Ilvl label
+        # Max ILvl label
         self.label_ilvl = QLabel(f"Detected Max ILvl: {self.max_ilvl}")
         main.addWidget(self.label_ilvl)
 
-        # Ilvl window slider
+        # ILvl window slider
         slider_layout = QHBoxLayout()
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(5)
@@ -50,7 +56,7 @@ class MainWindow(QMainWindow):
         slider_layout.addWidget(self.window_label)
         main.addLayout(slider_layout)
 
-        # Priority mode dropdown
+        # Priority dropdown
         self.priority_dropdown = QComboBox()
         self.priority_dropdown.addItems(PRIORITY_MODES)
         main.addWidget(self.priority_dropdown)
@@ -74,7 +80,7 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(self.btn_theme)
         main.addLayout(btn_layout)
 
-        # Progress and output
+        # Progress bar and output
         self.progress = QProgressBar()
         main.addWidget(self.progress)
         self.output_label = QLabel("Solver output will appear here")
@@ -93,7 +99,7 @@ class MainWindow(QMainWindow):
             QApplication.processEvents()
             self.cache["gear"], self.max_ilvl = refresh_gear_cache()
             self.cache["max_ilvl"] = self.max_ilvl
-            self.label_ilvl.setText(f"Detected Max Ilvl: {self.max_ilvl}")
+            self.label_ilvl.setText(f"Detected Max ILvl: {self.max_ilvl}")
             self.output_label.setText(f"Loaded {len(self.cache['gear'])} gear items.")
             self.save_cache()
         except Exception as e:
@@ -107,8 +113,8 @@ class MainWindow(QMainWindow):
             window = self.slider.value()
             filtered_gear = filter_by_ilvl_window(self.cache["gear"], self.max_ilvl, window)
             if not filtered_gear:
-                QMessageBox.warning(self, "Warning", "No gear found in the selected ilvl window.")
-                self.output_label.setText("No gear in ilvl window.")
+                QMessageBox.warning(self, "Warning", "No gear found in the selected ILvl window.")
+                self.output_label.setText("No gear in ILvl window.")
                 return
             priority = self.priority_dropdown.currentText()
             best_build, best_dps = solve_bis(filtered_gear, priority)
@@ -124,13 +130,13 @@ class MainWindow(QMainWindow):
             self.output_label.setText("Solver error.")
 
     def toggle_theme(self):
-        self.theme = "Light" if self.theme=="Dark" else "Dark"
+        self.theme = "Light" if self.theme == "Dark" else "Dark"
         self.apply_theme()
         self.cache["theme"] = self.theme
         self.save_cache()
 
     def apply_theme(self):
-        if self.theme=="Dark":
+        if self.theme == "Dark":
             self.setStyleSheet("background-color:#121212;color:#FFFFFF;")
         else:
             self.setStyleSheet("background-color:#FFFFFF;color:#000000;")
@@ -138,12 +144,13 @@ class MainWindow(QMainWindow):
     def save_cache(self):
         try:
             CACHE_PATH.parent.mkdir(exist_ok=True)
-            with open(CACHE_PATH,"w",encoding="utf-8") as f:
-                json.dump(self.cache,f,indent=2)
+            with open(CACHE_PATH, "w", encoding="utf-8") as f:
+                json.dump(self.cache, f, indent=2)
         except Exception as e:
             QMessageBox.warning(self, "Warning", f"Failed to save cache: {e}")
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
