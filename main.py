@@ -9,7 +9,7 @@ def log(msg):
         f.write(msg + "\n")
 
 # Load gear data
-data_path = Path("data/gear.json")
+data_path = Path(os.path.join(os.path.dirname(__file__), "data", "gear.json"))
 if not data_path.exists():
     log("gear.json not found!")
     raise FileNotFoundError("gear.json not found!")
