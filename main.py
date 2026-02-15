@@ -1,34 +1,40 @@
 import sys
 import threading
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QLabel, QLineEdit, QPushButton, QTextEdit
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+    QMessageBox,
 )
-from PyQt6.QtGui import QIcon
 from solver_engine import SolverEngine
 from data_models import CharacterStats
 
-class MainWindow(QMainWindow):
 
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("FFXIV Gear Solver - Phase 1")
-        self.setGeometry(100, 100, 600, 500)
-        self.setWindowIcon(QIcon("assets/app_icon.ico"))
+        self.setWindowTitle("FFXIV Solver - Phase 1")
+        self.setGeometry(200, 200, 650, 550)
 
         self.engine = SolverEngine()
 
+        self.inputs = {}
+
         layout = QVBoxLayout()
 
-        self.inputs = {}
         fields = [
             "Main Stat",
             "Crit",
             "Direct Hit",
             "Determination",
             "Skill Speed",
-            "Weapon Damage"
+            "Weapon Damage",
         ]
 
         for field in fields:
@@ -54,6 +60,7 @@ class MainWindow(QMainWindow):
     def run_solver(self):
         self.output.append("Starting calculation...")
         thread = threading.Thread(target=self.calculate)
+        thread.daemon = True
         thread.start()
 
     def calculate(self):
@@ -64,15 +71,17 @@ class MainWindow(QMainWindow):
                 direct_hit=int(self.inputs["Direct Hit"].text()),
                 determination=int(self.inputs["Determination"].text()),
                 skill_speed=int(self.inputs["Skill Speed"].text()),
-                weapon_damage=int(self.inputs["Weapon Damage"].text())
+                weapon_damage=int(self.inputs["Weapon Damage"].text()),
             )
 
             dps = self.engine.calculate_dps(stats)
 
             self.output.append(f"Calculated DPS: {dps}")
 
+        except ValueError:
+            self.output.append("Input error: Please enter valid integers.")
         except Exception as e:
-            self.output.append(f"Error: {str(e)}")
+            self.output.append(f"Unexpected error: {str(e)}")
 
 
 if __name__ == "__main__":
