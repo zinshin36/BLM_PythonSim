@@ -1,98 +1,82 @@
 import sys
-import os
-import logging
-import traceback
-from datetime import datetime
-
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout,
-    QLabel, QPushButton, QTextEdit, QSpinBox
+    QApplication, QWidget, QVBoxLayout, QPushButton, QTextEdit
 )
+from xiv_api import fetch_max_ilvl_for_job, fetch_gear
+from gear_manager import separate_by_slot
+from solver import find_best_set
+from materia_engine import recommend_materia
+from config import JOB_CATEGORY, ILVL_WINDOW, STAT_PROFILES
+from logger import setup_logger, log_info
 
-from solver_engine import BLMSolver
-
-# ---------------- LOGGING ----------------
-
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
-
-def setup_logging():
-    base_path = get_base_path()
-    log_path = os.path.join(base_path, "app_debug.log")
-
-    logging.basicConfig(
-        filename=log_path,
-        filemode="a",
-        level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)s] %(message)s"
-    )
-
-    logging.info("=========================================")
-    logging.info("Application Launch: %s", datetime.now())
-    logging.info("Python Version: %s", sys.version)
-    logging.info("Executable Path: %s", sys.executable)
-
-setup_logging()
-
-# ---------------- UI ----------------
+# Initialize logger
+setup_logger()
 
 class MainWindow(QWidget):
-
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("BLM Planner - Nothing Escapes Edition")
-        self.setMinimumSize(600, 500)
+        self.setWindowTitle("BLM Gear Optimizer")
+        self.resize(800, 700)
 
         layout = QVBoxLayout()
+        self.log = QTextEdit()
+        self.log.setReadOnly(True)
+        layout.addWidget(self.log)
 
-        self.label = QLabel("Fight Duration (seconds):")
-        layout.addWidget(self.label)
+        self.btn_detect = QPushButton("Detect Highest iLvl")
+        self.btn_detect.clicked.connect(self.detect_ilvl)
+        layout.addWidget(self.btn_detect)
 
-        self.duration_input = QSpinBox()
-        self.duration_input.setRange(10, 1000)
-        self.duration_input.setValue(60)
-        layout.addWidget(self.duration_input)
+        self.btn_fetch = QPushButton("Fetch Gear")
+        self.btn_fetch.clicked.connect(self.fetch_gear)
+        layout.addWidget(self.btn_fetch)
 
-        self.run_button = QPushButton("Run Simulation")
-        self.run_button.clicked.connect(self.run_simulation)
-        layout.addWidget(self.run_button)
+        self.btn_ss = QPushButton("Solve SpellSpeed BiS")
+        self.btn_ss.clicked.connect(lambda: self.solve_bis("spell_speed"))
+        layout.addWidget(self.btn_ss)
 
-        self.output = QTextEdit()
-        self.output.setReadOnly(True)
-        layout.addWidget(self.output)
+        self.btn_cr = QPushButton("Solve Critical BiS")
+        self.btn_cr.clicked.connect(lambda: self.solve_bis("critical"))
+        layout.addWidget(self.btn_cr)
 
         self.setLayout(layout)
 
-    def run_simulation(self):
-        try:
-            duration = self.duration_input.value()
-            logging.info(f"User started simulation for {duration}s")
+    def log_msg(self, msg: str):
+        self.log.append(msg)
+        log_info(msg)
 
-            solver = BLMSolver(duration)
-            results = solver.simulate()
+    def detect_ilvl(self):
+        max_ilvl = fetch_max_ilvl_for_job(JOB_CATEGORY)
+        if max_ilvl:
+            self.max_ilvl = max_ilvl
+            self.log_msg(f"Detected max ilvl: {self.max_ilvl}")
+        else:
+            self.log_msg("Failed to detect max ilvl.")
 
-            self.output.clear()
-            self.output.append("\n".join(results))
+    def fetch_gear(self):
+        if not hasattr(self,"max_ilvl"):
+            self.log_msg("Detect iLvl first.")
+            return
+        min_ilvl = self.max_ilvl - ILVL_WINDOW
+        gear_list = fetch_gear(JOB_CATEGORY, min_ilvl, self.max_ilvl)
+        self.slots = separate_by_slot(gear_list)
+        self.log_msg(f"Gear fetched and separated into {len(self.slots)} slots")
 
-        except Exception:
-            logging.critical("Simulation error:")
-            logging.critical(traceback.format_exc())
-            self.output.append("ERROR - See app_debug.log")
+    def solve_bis(self, profile_name):
+        if not hasattr(self,"slots"):
+            self.log_msg("Fetch gear first.")
+            return
+        self.log_msg(f"Solving {profile_name} BiS build...")
+        weights = STAT_PROFILES.get(profile_name)
+        best_set, score = find_best_set(self.slots, weights)
+        self.log_msg(f"Best Score ({profile_name}): {score}")
+        for slot,item in best_set.items():
+            self.log_msg(f"{slot}: {item['name']} ilvl {item['ilvl']}")
+            materia = recommend_materia(item["materia_slots"], item["stats"], weights)
+            self.log_msg(f" → Materia: {materia}")
 
-
-# ---------------- MAIN ----------------
-
-if __name__ == "__main__":
-    try:
-        app = QApplication(sys.argv)
-        window = MainWindow()
-        window.show()
-        sys.exit(app.exec_())
-
-    except Exception:
-        logging.critical("Fatal crash:")
-        logging.critical(traceback.format_exc())
-        print(traceback.format_exc())
-        input("Press Enter to exit...")
+if __name__=="__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
