@@ -4,15 +4,10 @@ import logging
 import traceback
 from datetime import datetime
 
-# -----------------------------
-# FORCE LOG CREATION ALWAYS
-# -----------------------------
-
 def get_base_path():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
-
 
 def setup_logging():
     base_path = get_base_path()
@@ -32,29 +27,24 @@ def setup_logging():
 
     return log_path
 
-
 log_file = setup_logging()
 
-# -----------------------------
-# WRAP EVERYTHING
-# -----------------------------
-
 try:
-    logging.info("Importing PyQt6 modules...")
-    from PyQt6.QtWidgets import QApplication, QLabel
-    from PyQt6.QtCore import Qt
+    logging.info("Importing PyQt5 modules...")
+    from PyQt5.QtWidgets import QApplication, QLabel
+    from PyQt5.QtCore import Qt
 
     logging.info("Creating QApplication...")
     app = QApplication(sys.argv)
 
     logging.info("Creating main window...")
     label = QLabel("Application Started Successfully")
-    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    label.setAlignment(Qt.AlignCenter)
     label.resize(500, 250)
     label.show()
 
     logging.info("Entering event loop...")
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
 
 except Exception:
     logging.critical("Fatal exception occurred:")
