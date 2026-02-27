@@ -1,7 +1,6 @@
-def separate_by_slot(gear_list):
-    """Organize gear by slot."""
+def separate_by_slot(gear):
     slots = {}
-    for item in gear_list:
+    for item in gear:
         slot = item["slot"]
         if slot not in slots:
             slots[slot] = []
