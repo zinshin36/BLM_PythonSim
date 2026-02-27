@@ -9,7 +9,7 @@ log_file = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y%m%d_%H%M%S')
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(INFO)s] %(message)s",
+    format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.FileHandler(log_file, encoding="utf-8"),
         logging.StreamHandler()
