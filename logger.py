@@ -1,15 +1,22 @@
 import logging
-from config import LOG_FILE
+import os
+import sys
 
 def setup_logger():
-    logging.basicConfig(
-        filename=LOG_FILE,
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s"
-    )
-    logging.info("=========================================")
-    logging.info("Application Launch")
+    exe_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.getcwd()
+    log_path = os.path.join(exe_dir, "app_debug.log")
 
-def log_info(msg: str):
+    logging.basicConfig(
+        filename=log_path,
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        filemode="a"
+    )
+
+    logging.info("===================================")
+    logging.info("Application Started")
+
+
+def log_info(msg):
     print(msg)
     logging.info(msg)
