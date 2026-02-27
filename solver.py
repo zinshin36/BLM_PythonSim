@@ -1,14 +1,9 @@
 from itertools import product
-
-def score_set(gear_set, weights):
-    total = 0
-    for item in gear_set.values():
-        for stat, val in item["stats"].items():
-            total += val * weights.get(stat, 0)
-    return total
+from blm_simulator import simulate_dps
+from materia_engine import apply_optimal_materia
 
 
-def find_best_set(slots, weights, blacklist):
+def find_best_set(slots, blacklist):
     slot_keys = list(slots.keys())
     best_score = -1
     best_set = None
@@ -21,12 +16,15 @@ def find_best_set(slots, weights, blacklist):
             if item["name"] in blacklist:
                 valid = False
                 break
-            gear_set[slot_keys[i]] = item
+            gear_set[slot_keys[i]] = dict(item)
 
         if not valid:
             continue
 
-        score = score_set(gear_set, weights)
+        for item in gear_set.values():
+            apply_optimal_materia(item)
+
+        score = simulate_dps(gear_set)
 
         if score > best_score:
             best_score = score
