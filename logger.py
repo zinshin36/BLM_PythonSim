@@ -1,22 +1,20 @@
 import logging
 import os
-import sys
+from datetime import datetime
 
-def setup_logger():
-    exe_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.getcwd()
-    log_path = os.path.join(exe_dir, "app_debug.log")
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
 
-    logging.basicConfig(
-        filename=log_path,
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        filemode="a"
-    )
+log_file = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
-    logging.info("===================================")
-    logging.info("Application Started")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(INFO)s] %(message)s",
+    handlers=[
+        logging.FileHandler(log_file, encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
 
-
-def log_info(msg):
-    print(msg)
-    logging.info(msg)
+def log(message):
+    logging.info(message)
