@@ -1,11 +1,12 @@
-def recommend_materia(item, weights):
+def apply_optimal_materia(item):
     slots = item["materia_slots"]
-    if slots <= 0:
-        return "None"
-
-    sorted_stats = sorted(weights.items(), key=lambda x: x[1], reverse=True)
-
     if item["crafted"]:
-        slots += 2  # allow overmeld simulation for crafted
+        slots += 2
 
-    return ", ".join([stat for stat, _ in sorted_stats[:slots]])
+    if slots <= 0:
+        item["materia"] = "None"
+        return
+
+    best_stat = "CriticalHit"
+    item["materia"] = f"{best_stat} x{slots}"
+    item["stats"][best_stat] = item["stats"].get(best_stat, 0) + (36 * slots)
