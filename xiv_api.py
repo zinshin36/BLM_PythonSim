@@ -1,21 +1,41 @@
 import requests
 from logger import log_info
 
-BASE = "https://v2.xivapi.com"
+BASE = "https://v2.xivapi.com/api"
+HEADERS = {"User-Agent": "BLM-Optimizer"}
+
+
+def get_expansion_versions():
+    try:
+        r = requests.get(f"{BASE}/versions", headers=HEADERS)
+        r.raise_for_status()
+        data = r.json()
+
+        versions = []
+        for entry in data.get("versions", []):
+            name = entry.get("version")
+            if name:
+                versions.append(name)
+
+        return versions
+
+    except Exception as e:
+        log_info(f"Expansion fetch error: {e}")
+        return []
+
 
 def detect_highest_ilvl():
     try:
-        params = {
-            "indexes": "Item",
-            "sort_field": "LevelItem",
-            "sort_order": "desc",
-            "limit": 1
-        }
-        r = requests.get(f"{BASE}/search", params=params)
+        r = requests.get(
+            f"{BASE}/sheet/Item",
+            params={"limit": 1, "sort": "LevelItem", "order": "desc"},
+            headers=HEADERS
+        )
         r.raise_for_status()
-        results = r.json()["Results"]
+        data = r.json()
+        results = data.get("results", [])
         if results:
-            return results[0]["LevelItem"]
+            return results[0].get("LevelItem")
     except Exception as e:
         log_info(f"Detect iLvl error: {e}")
     return None
@@ -23,37 +43,30 @@ def detect_highest_ilvl():
 
 def fetch_gear_range(min_ilvl, max_ilvl):
     try:
-        params = {
-            "indexes": "Item",
-            "filters": f"LevelItem>={min_ilvl};LevelItem<={max_ilvl}",
-            "columns": "ID,Name,LevelItem,EquipSlotCategory,Stats,MateriaSlotCount,ItemUICategory"
-        }
-        r = requests.get(f"{BASE}/search", params=params)
+        r = requests.get(
+            f"{BASE}/sheet/Item",
+            params={"limit": 1000},
+            headers=HEADERS
+        )
         r.raise_for_status()
-        items = r.json()["Results"]
 
         gear = []
-        for i in items:
+        for item in r.json().get("results", []):
+            ilvl = item.get("LevelItem", 0)
+            if not (min_ilvl <= ilvl <= max_ilvl):
+                continue
+
             gear.append({
-                "id": i["ID"],
-                "name": i["Name"],
-                "ilvl": i["LevelItem"],
-                "slot": str(i.get("EquipSlotCategory", {}).get("Name", "Unknown")),
-                "stats": i.get("Stats", {}),
-                "materia_slots": i.get("MateriaSlotCount", 0),
-                "crafted": "Crafting" in str(i.get("ItemUICategory", ""))
+                "name": item["Name"],
+                "ilvl": ilvl,
+                "slot": item.get("EquipSlotCategory", {}).get("Name", "Unknown"),
+                "stats": item.get("Stats", {}),
+                "materia_slots": item.get("MateriaSlotCount", 0),
+                "crafted": item.get("IsCrafted", False)
             })
+
         return gear
 
     except Exception as e:
         log_info(f"Fetch gear error: {e}")
         return []
-
-
-def update_expansion_data():
-    try:
-        r = requests.get(f"{BASE}/patch")
-        r.raise_for_status()
-        return "Expansion data refreshed."
-    except Exception as e:
-        return f"Update failed: {e}"
