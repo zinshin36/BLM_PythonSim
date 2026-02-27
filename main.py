@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog
 
 from logger import log
-from xivapi import detect_highest_ilvl, fetch_gear_range
+from xiv_api import detect_highest_ilvl, fetch_gear_range  # <-- FIXED IMPORT
 from optimizer import build_best_set
 from materia import apply_materia_logic
 
@@ -42,6 +42,10 @@ def build_set():
 
     best = build_best_set(current_gear_pool, blacklist)
     optimized = apply_materia_logic(best)
+
+    if not optimized:
+        messagebox.showerror("Error", "No gear found.")
+        return
 
     output = "\n".join(
         f"{item['Name']} (i{item['LevelItem']}) - Materia Slots: {item['MateriaSlotsUsed']}"
