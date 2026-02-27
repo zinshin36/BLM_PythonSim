@@ -1,80 +1,61 @@
 import requests
-from logger import log_info
+from logger import log
 
-BASE = "https://v2.xivapi.com/api/search"
-HEADERS = {"User-Agent": "BLM-Optimizer"}
-
+BASE_URL = "https://xivapi.com"
 
 def detect_highest_ilvl():
+    log("Detecting highest iLvl...")
+
     try:
-        r = requests.get(
-            BASE,
-            params={
-                "sheet": "Item",
-                "query": "LevelItem>0",
-                "sort": "-LevelItem",
-                "fields": "LevelItem",
-                "limit": 1
-            },
-            headers=HEADERS
-        )
+        url = f"{BASE_URL}/search"
+        params = {
+            "indexes": "Item",
+            "columns": "LevelItem",
+            "sort": "LevelItem",
+            "order": "desc",
+            "limit": 1
+        }
+
+        r = requests.get(url, params=params, timeout=10)
         r.raise_for_status()
-        results = r.json().get("results", [])
-        if results:
-            return results[0]["LevelItem"]
+        data = r.json()
+
+        max_ilvl = data["Results"][0]["LevelItem"]
+        log(f"Detected highest iLvl: {max_ilvl}")
+        return max_ilvl
+
     except Exception as e:
-        log_info(f"Detect iLvl error: {e}")
-    return None
+        log(f"Detect iLvl error: {e}")
+        return None
 
 
-def fetch_gear_range(min_ilvl, max_ilvl):
-    gear = []
-    page = 1
+def fetch_gear_range(min_ilvl, max_ilvl, job_category=34):
+    """
+    job_category 34 = Caster DPS
+    Change if needed.
+    """
+
+    log(f"Fetching gear between {min_ilvl} - {max_ilvl}")
 
     try:
-        while True:
-            r = requests.get(
-                BASE,
-                params={
-                    "sheet": "Item",
-                    "query": f"LevelItem>={min_ilvl} AND LevelItem<={max_ilvl}",
-                    "fields":
-                        "Name,LevelItem,EquipSlotCategory.Name,"
-                        "ClassJobCategory.Name,Stats,MateriaSlotCount,IsCrafted",
-                    "limit": 100,
-                    "page": page
-                },
-                headers=HEADERS
-            )
-            r.raise_for_status()
+        url = f"{BASE_URL}/search"
+        query = f"LevelItem>={min_ilvl} LevelItem<={max_ilvl} ClassJobCategory={job_category}"
 
-            data = r.json()
-            results = data.get("results", [])
+        params = {
+            "indexes": "Item",
+            "columns": "ID,Name,LevelItem,EquipSlotCategory,IsCraftable",
+            "query": query,
+            "limit": 1000
+        }
 
-            if not results:
-                break
+        r = requests.get(url, params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
 
-            for item in results:
-                job = item.get("ClassJobCategory", {}).get("Name", "")
-                if "Black Mage" not in job:
-                    continue
-
-                gear.append({
-                    "name": item["Name"],
-                    "ilvl": item["LevelItem"],
-                    "slot": item.get("EquipSlotCategory", {}).get("Name", "Unknown"),
-                    "stats": item.get("Stats", {}),
-                    "materia_slots": item.get("MateriaSlotCount", 0),
-                    "crafted": item.get("IsCrafted", False)
-                })
-
-            if not data.get("pagination", {}).get("has_next"):
-                break
-
-            page += 1
-
-        return gear
+        results = data.get("Results", [])
+        log(f"Fetched {len(results)} gear items")
+        return results
 
     except Exception as e:
-        log_info(f"Fetch gear error: {e}")
+        log(f"Gear fetch error: {e}")
         return []
