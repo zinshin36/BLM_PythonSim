@@ -1,61 +1,89 @@
 import requests
+import time
 from logger import log
 
 BASE_URL = "https://xivapi.com"
+RATE_LIMIT_DELAY = 0.25
+
+
+def _request(endpoint, params):
+    time.sleep(RATE_LIMIT_DELAY)
+
+    r = requests.get(f"{BASE_URL}{endpoint}", params=params, timeout=20)
+    r.raise_for_status()
+    return r.json()
+
 
 def detect_highest_ilvl():
-    log("Detecting highest iLvl...")
+    log("Detecting highest iLvl")
 
     try:
-        url = f"{BASE_URL}/search"
-        params = {
+        data = _request("/search", {
             "indexes": "Item",
             "columns": "LevelItem",
             "sort": "LevelItem",
             "order": "desc",
             "limit": 1
-        }
+        })
 
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-
-        max_ilvl = data["Results"][0]["LevelItem"]
-        log(f"Detected highest iLvl: {max_ilvl}")
-        return max_ilvl
+        return data["Results"][0]["LevelItem"]
 
     except Exception as e:
-        log(f"Detect iLvl error: {e}")
+        log(f"iLvl detect failed: {e}")
         return None
 
 
+def _extract_stats(item):
+    stats = {}
+
+    if "BaseParamValue" in item:
+        for entry in item["BaseParamValue"]:
+            stat = entry["BaseParam"]["Name"]
+            stats[stat] = entry["Value"]
+
+    if item.get("DamageMag"):
+        stats["WeaponDamage"] = item["DamageMag"]
+
+    return stats
+
+
 def fetch_gear_range(min_ilvl, max_ilvl, job_category=34):
-    """
-    job_category 34 = Caster DPS
-    Change if needed.
-    """
 
-    log(f"Fetching gear between {min_ilvl} - {max_ilvl}")
+    log(f"Fetching gear {min_ilvl}-{max_ilvl}")
 
-    try:
-        url = f"{BASE_URL}/search"
-        query = f"LevelItem>={min_ilvl} LevelItem<={max_ilvl} ClassJobCategory={job_category}"
+    page = 1
+    gear = []
 
-        params = {
+    while True:
+
+        data = _request("/search", {
             "indexes": "Item",
-            "columns": "ID,Name,LevelItem,EquipSlotCategory,IsCraftable",
-            "query": query,
-            "limit": 1000
-        }
-
-        r = requests.get(url, params=params, timeout=15)
-        r.raise_for_status()
-        data = r.json()
+            "query": f"LevelItem>={min_ilvl} LevelItem<={max_ilvl} ClassJobCategory={job_category}",
+            "columns": "ID,Name,LevelItem,EquipSlotCategory,IsCraftable,DamageMag,BaseParamValue",
+            "limit": 100,
+            "page": page
+        })
 
         results = data.get("Results", [])
-        log(f"Fetched {len(results)} gear items")
-        return results
 
-    except Exception as e:
-        log(f"Gear fetch error: {e}")
-        return []
+        if not results:
+            break
+
+        for item in results:
+
+            stats = _extract_stats(item)
+
+            gear.append({
+                "name": item["Name"],
+                "slot": item["EquipSlotCategory"],
+                "ilvl": item["LevelItem"],
+                "crafted": item["IsCraftable"],
+                "stats": stats,
+                "materia_slots": 2
+            })
+
+        page += 1
+
+    log(f"Fetched {len(gear)} items")
+
+    return gear
