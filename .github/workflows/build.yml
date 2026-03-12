@@ -16,6 +16,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Cache Python packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Setup Python 3.10.11
         uses: actions/setup-python@v6
         with:
@@ -28,8 +36,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build EXE with PyInstaller
-        run: |
-          pyinstaller --noconfirm --clean --onefile --windowed main.py
+        run: pyinstaller --noconfirm --clean --onefile --windowed main.py
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v5
