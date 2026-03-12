@@ -14,7 +14,9 @@ GEAR_CACHE_FILE = os.path.join(CACHE_DIR, "gear.json")
 
 
 def _request(endpoint, params, retries=3):
-    """Perform a GET request with retry logic for 500/HTTP errors."""
+    """
+    Perform a GET request with retry logic for transient errors.
+    """
     for attempt in range(retries):
         try:
             time.sleep(RATE_LIMIT_DELAY)
@@ -36,6 +38,9 @@ def _request(endpoint, params, retries=3):
 
 
 def load_cache(file_path):
+    """
+    Load cached JSON data if available.
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -44,6 +49,9 @@ def load_cache(file_path):
 
 
 def save_cache(file_path, data):
+    """
+    Save JSON data to cache file.
+    """
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -52,39 +60,56 @@ def save_cache(file_path, data):
 
 
 def detect_highest_ilvl():
-    """Detect the highest iLvl item, with caching and retry support."""
+    """
+    Detect the highest item level using the XIVAPI /search endpoint,
+    with caching and retry support.
+    """
     cached = load_cache(HIGHEST_ILVL_CACHE)
     if cached:
         log(f"Loaded highest iLvl from cache: {cached}")
         return cached
 
     log("Detecting highest iLvl via XIVAPI...")
+
     try:
-        data = _request("/items", {"sort": "LevelItem", "order": "desc", "limit": 1})
+        data = _request("/search", {
+            "indexes": "Item",
+            "filters": "LevelItem>=0",
+            "sort": "LevelItem",
+            "order": "desc",
+            "limit": 1
+        })
+
         max_ilvl = data["Results"][0]["LevelItem"]
         log(f"Detected highest iLvl: {max_ilvl}")
         save_cache(HIGHEST_ILVL_CACHE, max_ilvl)
         return max_ilvl
+
     except Exception as e:
         log(f"iLvl detect failed: {e}")
         return None
 
 
 def _extract_stats(item):
+    """
+    Extract relevant stats from an item record.
+    """
     stats = {}
     if "BaseParamValue" in item:
         for entry in item["BaseParamValue"]:
             stat = entry["BaseParam"]["Name"]
             stats[stat] = entry["Value"]
+
     if item.get("DamageMag"):
         stats["WeaponDamage"] = item["DamageMag"]
+
     return stats
 
 
 def fetch_gear_range(min_ilvl, max_ilvl, job_category=34, use_cache=True):
     """
-    Fetch gear from XIVAPI for a job category and iLvl range.
-    Supports caching to avoid API failures.
+    Fetch gear for a job category and iLvl range
+    with XIVAPI /search using filters, retry, and caching.
     """
     if use_cache:
         cached = load_cache(GEAR_CACHE_FILE)
@@ -93,15 +118,17 @@ def fetch_gear_range(min_ilvl, max_ilvl, job_category=34, use_cache=True):
             return cached
 
     log(f"Fetching gear from XIVAPI: iLvl {min_ilvl}-{max_ilvl}, job category {job_category}")
-    page = 1
+
     gear = []
+    page = 1
 
     while True:
-        query = f"LevelItem>={min_ilvl} LevelItem<={max_ilvl} ClassJobCategory={job_category}"
+        query_filter = f"LevelItem>={min_ilvl} AND LevelItem<={max_ilvl} AND ClassJobCategory={job_category}"
+
         try:
             data = _request("/search", {
                 "indexes": "Item",
-                "query": query,
+                "filters": query_filter,
                 "columns": "ID,Name,LevelItem,EquipSlotCategory,IsCraftable,DamageMag,BaseParamValue",
                 "limit": 100,
                 "page": page
@@ -122,12 +149,13 @@ def fetch_gear_range(min_ilvl, max_ilvl, job_category=34, use_cache=True):
                 "ilvl": item["LevelItem"],
                 "crafted": item.get("IsCraftable", False),
                 "stats": stats,
-                "materia_slots": 2  # default slots, overmeld handled elsewhere
+                "materia_slots": 2
             })
 
         page += 1
 
     log(f"Fetched {len(gear)} gear items")
+
     if gear:
         save_cache(GEAR_CACHE_FILE, gear)
 
