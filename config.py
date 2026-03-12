@@ -1,5 +1,7 @@
+# iLvl window for fetching gear
 ILVL_WINDOW = 30
 
+# Stat priorities for optimization
 STAT_PROFILES = {
     "spell_speed": {
         "SpellSpeed": 0.6,
@@ -14,3 +16,6 @@ STAT_PROFILES = {
         "SpellSpeed": 0.2
     }
 }
+
+# Fight duration for simulation (seconds)
+FIGHT_DURATION = 300
