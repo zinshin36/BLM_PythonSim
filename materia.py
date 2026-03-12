@@ -1,20 +1,12 @@
 from logger import log
+from materia_engine import apply_optimal_materia
 
 def apply_materia_logic(gear_set):
     optimized = []
 
     for item in gear_set:
-        crafted = item.get("IsCraftable", False)
-
-        if crafted:
-            meld_slots = 5  # overmeld allowed
-        else:
-            meld_slots = 2  # normal cap
-
-        item_copy = item.copy()
-        item_copy["MateriaSlotsUsed"] = meld_slots
-
-        optimized.append(item_copy)
+        apply_optimal_materia(item)
+        optimized.append(item)
 
     log("Materia logic applied")
     return optimized
