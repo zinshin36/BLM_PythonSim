@@ -4,6 +4,7 @@ from logger import log
 from xiv_api import detect_highest_ilvl, fetch_gear_range
 from optimizer import build_best_set
 from materia import apply_materia_logic
+import requests
 
 current_max_ilvl = None
 current_gear_pool = []
@@ -59,11 +60,29 @@ def build_set():
     messagebox.showinfo("Best Set", output)
 
 
+def check_api_status():
+    log("Checking XIVAPI status...")
+    try:
+        # Lightweight test: check the base /search endpoint with minimal params
+        r = requests.get("https://xivapi.com/search", params={"indexes": "Item", "limit": 1}, timeout=10)
+        if r.status_code == 200:
+            messagebox.showinfo("API Status", "XIVAPI is ONLINE ✅")
+            log("XIVAPI status: ONLINE")
+        else:
+            messagebox.showwarning("API Status", f"XIVAPI returned status {r.status_code}")
+            log(f"XIVAPI status: {r.status_code}")
+    except Exception as e:
+        messagebox.showerror("API Status", f"XIVAPI is DOWN ❌\nError: {e}")
+        log(f"XIVAPI status: DOWN - {e}")
+
+
+# --- GUI Setup ---
 root = tk.Tk()
 root.title("FFXIV Gear Optimizer")
 
 tk.Button(root, text="Detect Highest iLvl", command=detect_ilvl, width=30).pack(pady=10)
 tk.Button(root, text="Build Best Set", command=build_set, width=30).pack(pady=10)
+tk.Button(root, text="Check XIVAPI Status", command=check_api_status, width=30, fg="blue").pack(pady=10)
 
 log("===================================")
 log("Application Started")
