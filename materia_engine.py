@@ -1,7 +1,7 @@
 def apply_optimal_materia(item):
-    slots = item["materia_slots"]
-    if item["crafted"]:
-        slots += 2
+    slots = item.get("materia_slots", 0)
+    if item.get("crafted", False):
+        slots += 2  # crafted bonus
 
     if slots <= 0:
         item["materia"] = "None"
